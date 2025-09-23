@@ -16,7 +16,7 @@
 
 1. 克隆本仓库
    ```bash
-   git clone https://github.com/你的用户名/xiaomi-live-photo-extractor.git
+   git clone https://github.com/ches2010/xiaomi-live-photo-extractor.git
    cd xiaomi-live-photo-extractor
    ```
 
