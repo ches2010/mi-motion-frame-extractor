@@ -1,2 +1,3 @@
 # 注意：替换掉原来的 opencv-python
 opencv-contrib-python
+ffmpeg
