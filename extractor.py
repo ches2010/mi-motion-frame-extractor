@@ -4,6 +4,7 @@ import os
 import argparse
 import json
 import shutil # 用于移动/删除文件
+import subprocess  # <-- 在文件顶部添加这一行，用于调用 ffmpeg
 
 # --- 配置文件加载 ---
 CONFIG_FILE = 'config.json'
@@ -96,88 +97,60 @@ def extract_video_from_jpeg(jpeg_path, output_video_path):
         return False
 
 
-def extract_and_filter_frames(video_path, output_folder, min_blur_threshold, detect_faces_flag, keep_blur_info):
-    """
-    从视频文件中逐帧提取图片，并根据模糊度和人脸检测进行过滤。
-    """
-    # 创建输出文件夹和过滤文件夹
-    filtered_folder = os.path.join(output_folder, "filtered_out")
-    os.makedirs(output_folder, exist_ok=True)
-    os.makedirs(filtered_folder, exist_ok=True)
+def extract_video_from_jpeg(jpeg_path, output_video_path):
+    """从小米动态照片的 .jpg 文件中提取内嵌的 .mp4 视频数据，并使用 ffmpeg 修复。"""
+    try:
+        with open(jpeg_path, 'rb') as f:
+            data = f.read()
 
-    # 打开视频文件
-    cap = cv2.VideoCapture(video_path)
+        marker = b'\xFF\xD9'
+        marker_pos = data.find(marker)
 
-    if not cap.isOpened():
-        print(f"错误: 无法打开视频文件 '{video_path}' 进行帧提取。")
-        return False
+        if marker_pos == -1:
+            print(f"警告: 在文件 '{jpeg_path}' 中未找到 JPEG 结束标记。跳过此文件。")
+            return False
 
-    frame_count = 0
-    kept_count = 0
-    filtered_count = 0
-    blur_info_lines = []
+        video_data = data[marker_pos + len(marker):]
 
-    print(f"开始提取和过滤帧 (模糊阈值: {min_blur_threshold}, 检测人脸: {detect_faces_flag})...")
+        if not video_data:
+            print(f"警告: 在文件 '{jpeg_path}' 的 JPEG 结束标记后未找到视频数据。跳过此文件。")
+            return False
 
-    while True:
-        success, image = cap.read()
-        if not success:
-            break
+        # 保存原始提取的视频
+        with open(output_video_path, 'wb') as f:
+            f.write(video_data)
 
-        filename = f"frame_{frame_count:04d}.jpg"
-        full_output_path = os.path.join(output_folder, filename)
-        
-        # 保存原始帧（稍后可能移动）
-        cv2.imwrite(full_output_path, image)
-        
-        # --- 分析帧 ---
-        is_blurry = False
-        has_face = True # 默认认为有人脸，除非启用检测且未检测到
-        
-        blur_variance = calculate_blur_variance(image)
-        if keep_blur_info or blur_variance < min_blur_threshold:
-             blur_info_lines.append(f"{filename}: Blur Variance = {blur_variance:.2f}\n")
-        
-        if blur_variance < min_blur_threshold:
-            is_blurry = True
+        print(f"已提取原始视频: '{output_video_path}'")
 
-        if detect_faces_flag:
-            has_face = detect_faces(image)
-            
-        # --- 决定是否保留 ---
-        should_keep = not is_blurry and has_face
+        # --- 新增：使用 ffmpeg 修复视频 ---
+        fixed_video_path = output_video_path.replace(".mp4", "_fixed.mp4")
+        cmd = [
+            'ffmpeg',
+            '-i', output_video_path,      # 输入原始提取的视频
+            '-c', 'copy',                 # 不重新编码，只复制流
+            '-movflags', 'faststart',     # 将 moov atom 移动到文件开头
+            '-y',                         # 覆盖输出文件
+            fixed_video_path
+        ]
 
-        if should_keep:
-            print(f"  保留帧: {filename} (Blur: {blur_variance:.2f})") # 可选：打印保留的帧
-            kept_count += 1
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            print(f"警告: ffmpeg 修复失败 '{output_video_path}'。错误信息:\n{result.stderr.decode('utf-8')}")
+            # 如果修复失败，我们仍然尝试用原始文件（虽然大概率还是失败）
+            return True # 或者你可以 return False，取决于你的策略
         else:
-            # 移动到 filtered_out 文件夹
-            filtered_output_path = os.path.join(filtered_folder, filename)
-            shutil.move(full_output_path, filtered_output_path)
-            reason = []
-            if is_blurry: reason.append("模糊")
-            if not has_face: reason.append("无人脸")
-            print(f"  剔除帧: {filename} (原因: {', '.join(reason)}, Blur: {blur_variance:.2f})")
-            filtered_count += 1
-            
-        frame_count += 1
+            print(f"已修复视频: '{fixed_video_path}'")
+            # 删除原始提取的文件，重命名修复后的文件
+            os.remove(output_video_path)
+            os.rename(fixed_video_path, output_video_path)
+            print(f"已替换为修复版本: '{output_video_path}'")
 
-    # 释放视频捕获对象
-    cap.release()
-    
-    # 保存模糊度信息（如果需要）
-    if keep_blur_info and blur_info_lines:
-        blur_info_path = os.path.join(output_folder, "blur_info.txt")
-        with open(blur_info_path, 'w') as f:
-            f.writelines(blur_info_lines)
-        print(f"模糊度信息已保存到: {blur_info_path}")
+        return True
 
-    if frame_count > 0:
-        print(f"完成帧提取和过滤: '{output_folder}'")
-        print(f"  总帧数: {frame_count}, 保留: {kept_count}, 剔除: {filtered_count}")
-    else:
-        print(f"警告: 从视频 '{video_path}' 未提取到任何帧。")
-    return True
+    except Exception as e:
+        print(f"提取或修复视频 '{jpeg_path}' 时发生错误: {e}")
+        return False
 
 
 def process_motion_photo(jpeg_path, output_root_folder, config):
