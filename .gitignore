@@ -1,0 +1,54 @@
+# Python字节码文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 分布/打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 环境
+venv/
+env/
+ENV/
+.env
+.venv
+
+# 日志和临时文件
+*.log
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 提取的帧和处理结果
+live_photo_frames/
+extracted_frames/
+
+# 配置文件（允许用户有本地配置但不提交到仓库）
+!extractor_config.ini.default
+*.ini
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
