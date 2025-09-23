@@ -1,0 +1,25 @@
+[Paths]
+# 输入目录或文件路径
+# 可以是单个文件路径，例如: ./example_photo.jpg
+# 也可以是目录路径，例如: ./photos
+input_dir = ./input_photos
+
+# 输出目录路径
+# 提取的帧将保存在此目录下，每个文件会有单独的子文件夹
+output_dir = ./extracted_frames
+
+[Extraction]
+# 帧提取间隔，1表示提取所有帧，2表示每隔一帧提取一次，以此类推
+interval = 1
+
+# 最大提取帧数限制，防止处理异常文件时出现无限循环
+# 小米动态照片通常时长较短（2-3秒），500帧已足够
+max_frames = 500
+
+[Processing]
+# 是否递归处理子目录中的文件 (true/false)
+recursive = false
+
+# 处理完成后是否保留临时文件 (true/false)
+# 调试时可设为true，正常使用建议设为false
+keep_temp_files = false
