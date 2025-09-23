@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 
 def extract_video_from_jpeg(jpeg_path, output_video_path):
-    """从小米动态照片的 .jpg 文件中提取内嵌视频数据，并使用 ffmpeg 强制重新编码为标准 MP4。"""
+    """从小米动态照片的 .jpg 文件中提取内嵌视频数据，并使用 ffmpeg 修复 fragmented MP4 结构。"""
     try:
         with open(jpeg_path, 'rb') as f:
             data = f.read()
@@ -29,13 +29,57 @@ def extract_video_from_jpeg(jpeg_path, output_video_path):
 
         print(f"💾 已提取原始视频: '{output_video_path}'")
 
-        # --- 使用 ffmpeg 强制重新编码 ---
-        fixed_video_path = output_video_path.replace(".mp4", "_fixed.mp4")
-
-        # 尝试强制指定输入格式为 'mp4'，并重新编码
-        cmd = [
+        # --- Step 1: 尝试用 -f mp4 + -ignore_editlist 修复 fragment ---
+        fixed_step1 = output_video_path.replace(".mp4", "_step1.mp4")
+        cmd1 = [
             'ffmpeg',
             '-f', 'mp4',
+            '-ignore_editlist', '1',  # 忽略编辑列表，常用于修复 fMP4
+            '-i', output_video_path,
+            '-c', 'copy',             # 先不转码，只修复结构
+            '-movflags', 'faststart',
+            '-y',
+            fixed_step1
+        ]
+
+        result1 = subprocess.run(cmd1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result1.returncode == 0:
+            print(f"🔧 步骤1修复成功: '{fixed_step1}'")
+            # --- Step 2: 重新编码确保兼容性 ---
+            fixed_final = output_video_path.replace(".mp4", "_fixed.mp4")
+            cmd2 = [
+                'ffmpeg',
+                '-i', fixed_step1,
+                '-c:v', 'libx264',
+                '-preset', 'fast',
+                '-crf', '23',
+                '-c:a', 'aac',
+                '-b:a', '128k',
+                '-movflags', 'faststart',
+                '-y',
+                fixed_final
+            ]
+            result2 = subprocess.run(cmd2, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result2.returncode == 0:
+                print(f"✅ 最终编码成功: '{fixed_final}'")
+                # 替换原文件
+                os.remove(output_video_path)
+                os.remove(fixed_step1)  # 清理中间文件
+                os.rename(fixed_final, output_video_path)
+                return True
+            else:
+                print(f"❌ 步骤2编码失败: {result2.stderr.decode('utf-8', errors='ignore')}")
+        else:
+            print(f"❌ 步骤1修复失败，尝试直接强制转码...")
+
+        # --- 备用方案：强制指定格式 + 忽略 moov + 使用 copyts ---
+        fixed_fallback = output_video_path.replace(".mp4", "_fallback.mp4")
+        cmd_fallback = [
+            'ffmpeg',
+            '-f', 'mp4',
+            '-ignore_editlist', '1',
+            '-fflags', '+genpts',     # 生成缺失的时间戳
             '-i', output_video_path,
             '-c:v', 'libx264',
             '-preset', 'fast',
@@ -44,47 +88,45 @@ def extract_video_from_jpeg(jpeg_path, output_video_path):
             '-b:a', '128k',
             '-movflags', 'faststart',
             '-y',
-            fixed_video_path
+            fixed_fallback
         ]
-
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        if result.returncode != 0:
-            print(f"❌ ffmpeg 重新编码失败 '{output_video_path}'。错误信息:\n{result.stderr.decode('utf-8', errors='ignore')}")
-            print("🔄 尝试不指定输入格式重新编码...")
-
-            # 备用方案：让 ffmpeg 自动探测格式
-            cmd_fallback = [
-                'ffmpeg',
-                '-i', output_video_path,
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-c:a', 'aac',
-                '-b:a', '128k',
-                '-movflags', 'faststart',
-                '-y',
-                fixed_video_path
-            ]
-            result2 = subprocess.run(cmd_fallback, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if result2.returncode != 0:
-                print(f"❌ 备用方案也失败: {result2.stderr.decode('utf-8', errors='ignore')}")
-                return False
-            else:
-                print(f"✅ 备用方案成功: '{fixed_video_path}'")
+        result_fb = subprocess.run(cmd_fallback, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result_fb.returncode == 0:
+            print(f"✅ 备用方案成功: '{fixed_fallback}'")
+            os.remove(output_video_path)
+            os.rename(fixed_fallback, output_video_path)
+            return True
         else:
-            print(f"✅ 重新编码成功: '{fixed_video_path}'")
+            print(f"❌ 备用方案失败: {result_fb.stderr.decode('utf-8', errors='ignore')}")
 
-        # 替换原文件
-        os.remove(output_video_path)
-        os.rename(fixed_video_path, output_video_path)
-        print(f"🎬 已生成标准视频: '{output_video_path}'")
-
-        return True
+        return False
 
     except Exception as e:
         print(f"💥 提取或编码视频 '{jpeg_path}' 时发生错误: {e}")
         return False
+
+        # --- 终极兜底：当作原始 H.264 裸流处理 ---
+        print("🔄 终极兜底：尝试作为 h264 裸流处理...")
+        fixed_last_resort = output_video_path.replace(".mp4", "_last_resort.mp4")
+        cmd_last = [
+            'ffmpeg',
+            '-f', 'h264',          # 强制当作裸流
+            '-i', output_video_path,
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-movflags', 'faststart',
+            '-y',
+            fixed_last_resort
+        ]
+        result_last = subprocess.run(cmd_last, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result_last.returncode == 0:
+            print(f"✅ 终极兜底成功: '{fixed_last_resort}'")
+            os.remove(output_video_path)
+            os.rename(fixed_last_resort, output_video_path)
+            return True
+        else:
+            print(f"❌ 终极兜底失败: {result_last.stderr.decode('utf-8', errors='ignore')}")
 
 
 def extract_and_filter_frames(video_path, output_folder, min_blur_threshold, detect_faces_flag, keep_blur_info):
