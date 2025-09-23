@@ -1,0 +1,7 @@
+{
+    "input_folder": "input_photos",
+    "output_folder": "extracted_frames",
+    "min_blur_threshold": 100.0,
+    "detect_faces": true,
+    "keep_blur_info": false
+}
