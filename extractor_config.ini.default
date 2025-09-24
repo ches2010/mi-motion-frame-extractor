@@ -1,25 +1,26 @@
 [Paths]
-# 输入目录或文件路径
-# 可以是单个文件路径，例如: ./example_photo.jpg
-# 也可以是目录路径，例如: ./photos
+# 帧提取：输入文件/目录路径
 input_dir = ./input_photos
-
-# 输出目录路径
-# 提取的帧将保存在此目录下，每个文件会有单独的子文件夹
-output_dir = ./extracted_frames
+# 帧提取：基础输出目录（每个文件会生成子目录）
+output_dir = ./live_photo_frames
+# 模糊删除（独立模式）：默认处理的图片目录
+blur_clean_dir = ./frames_to_clean
 
 [Extraction]
-# 帧提取间隔，1表示提取所有帧，2表示每隔一帧提取一次，以此类推
+# 帧提取：帧间隔（1=提取所有帧，2=每隔1帧提取）
 interval = 1
-
-# 最大提取帧数限制，防止处理异常文件时出现无限循环
-# 小米动态照片通常时长较短（2-3秒），500帧已足够
+# 帧提取：最大帧数限制（防止异常文件无限循环）
 max_frames = 500
 
 [Processing]
-# 是否递归处理子目录中的文件 (true/false)
+# 帧提取：是否递归处理子目录（true/false）
 recursive = false
+# 帧提取后：是否自动执行模糊人脸删除（true/false）
+post_extract_clean_blur = false
 
-# 处理完成后是否保留临时文件 (true/false)
-# 调试时可设为true，正常使用建议设为false
-keep_temp_files = false
+[Cleanup]
+# 模糊删除：模糊度阈值（值越低，判断为模糊的标准越严格）
+blur_threshold = 100.0
+# 模糊删除：模拟运行（true=只检测不删除，false=实际删除）
+dry_run = false
+    
