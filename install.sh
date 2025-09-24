@@ -16,5 +16,5 @@ echo "安装Python依赖..."
 pip3 install -r requirements.txt
 
 echo "安装完成！"
-echo "使用方法: python3 xiaomi_live_photo_extractor.py"
-echo "可通过修改extractor_config.ini配置文件设置输入输出目录等参数"
+echo "使用方法: python3 xiaomi_live_photo_extractor.py --help"
+    
