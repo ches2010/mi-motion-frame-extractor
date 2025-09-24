@@ -46,33 +46,33 @@ python3 xiaomi_live_photo_extractor.py
 python3 xiaomi_live_photo_extractor.py ./path/to/photo.jpg
 ```
 
-# 处理目录并递归子目录
+### 处理目录并递归子目录
 ```
 python3 xiaomi_live_photo_extractor.py ./photos_dir -r
 ```
 
-# 指定输出目录
+### 指定输出目录
 ```
 python3 xiaomi_live_photo_extractor.py -o ./my_output_dir
 ```
 
-# 提取间隔为2（每2帧提取1帧）
+### 提取间隔为2（每2帧提取1帧）
 ```
 python3 xiaomi_live_photo_extractor.py -i 2
 ```
 
 ### 2. 模糊人脸删除（独立功能）
-# 清理指定目录中的模糊人脸图片
+#### 清理指定目录中的模糊人脸图片
 ```
 python3 xiaomi_live_photo_extractor.py --remove-blur --blur-dir ./frames_dir
 ```
 
-# 自定义模糊阈值（值越低标准越严格）
+#### 自定义模糊阈值（值越低标准越严格）
 ```
 python3 xiaomi_live_photo_extractor.py --remove-blur --blur-dir ./frames_dir --blur-threshold 80
 ```
 
-# 模拟运行（不实际删除，仅显示结果）
+#### 模拟运行（不实际删除，仅显示结果）
 ```
 python3 xiaomi_live_photo_extractor.py --remove-blur --blur-dir ./frames_dir --dry-run
 ```
@@ -84,7 +84,7 @@ python3 xiaomi_live_photo_extractor.py --remove-blur --blur-dir ./frames_dir --d
 python3 xiaomi_live_photo_extractor.py ./photos_dir
 ```
 
-# 方法2：直接指定（需要先设置配置文件post_extract_clean_blur=true）
+#### 方法2：直接指定（需要先设置配置文件post_extract_clean_blur=true）
 ```
 python3 xiaomi_live_photo_extractor.py ./photos_dir
 ```
