@@ -38,6 +38,8 @@ temp/
 # 提取的帧和处理结果
 live_photo_frames/
 extracted_frames/
+input_photos/
+frames_to_clean/
 
 # 配置文件（允许用户有本地配置但不提交到仓库）
 !extractor_config.ini.default
@@ -52,3 +54,4 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+    
